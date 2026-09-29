@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memorama de la Vocal I</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for Victory Celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts: Fredoka & Quicksand -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Fredoka', 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 50%, #80deea 100%);
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 3D Card Flip Animation Styling */
+        .card-perspective {
+            perspective: 1000px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .card-container.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-container.matched .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1.25rem;
+        }
+
+        /* Front of card (Hidden content, showing letter I pattern) */
+        .card-front {
+            background: linear-gradient(135deg, #0288d1 0%, #03a9f4 100%);
+            border: 4px solid #ffffff;
+            box-shadow: 0 8px 15px rgba(2, 136, 209, 0.3);
+        }
+
+        /* Back of card (Revealed item) */
+        .card-back {
+            background-color: #ffffff;
+            transform: rotateY(180deg);
+            border: 4px solid #4fc3f7;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Matched card highlight pulse */
+        .card-container.matched {
+            animation: pulse-success 0.6s ease-in-out forwards;
+        }
+
+        @keyframes pulse-success {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        .card-container.matched .card-back {
+            border-color: #4caf50;
+            background-color: #f1f8e9;
+        }
+
+        /* Bouncing header letter */
+        @keyframes float-bounce {
+            0%, 100% { transform: translateY(0) rotate(-3deg); }
+            50% { transform: translateY(-8px) rotate(3deg); }
+        }
+
+        .bounce-letter {
+            animation: float-bounce 3s ease-in-out infinite;
+        }
+
+        /* Custom scrollbar for small devices if needed */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0288d1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen justify-between p-3 sm:p-6 text-slate-800">
+
+    <!-- Top Bar & Header Section -->
+    <header class="max-w-4xl mx-auto w-full flex flex-col items-center mb-4">
+        <!-- Title Banner -->
+        <div class="bg-white/90 backdrop-blur-md px-6 py-3 sm:px-8 sm:py-4 rounded-3xl shadow-lg border-4 border-cyan-300 text-center flex items-center justify-center gap-3 w-full max-w-2xl relative">
+            <div class="bounce-letter bg-gradient-to-tr from-amber-400 to-yellow-300 text-white w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-3xl sm:text-5xl font-extrabold shadow-md border-2 border-white">
+                I
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent uppercase tracking-wide">
+                    Memorama de la Vocal "I"
+                </h1>
+                <p class="text-xs sm:text-sm font-bold text-cyan-700">Encuentra los 5 pares de objetos que inician con I</p>
+            </div>
+        </div>
+
+        <!-- Game Stats Bar -->
+        <div class="grid grid-cols-3 gap-2 sm:gap-4 w-full max-w-xl mt-4">
+            <!-- Matches Counter -->
+            <div class="bg-white/80 rounded-2xl p-2 sm:p-3 text-center border-2 border-cyan-200 shadow-sm flex flex-col items-center justify-center">
+                <span class="text-xs text-cyan-800 font-bold uppercase tracking-wider">Pares</span>
+                <span id="pairs-count" class="text-xl sm:text-2xl font-extrabold text-cyan-600">0 / 5</span>
+            </div>
+            <!-- Attempts Counter -->
+            <div class="bg-white/80 rounded-2xl p-2 sm:p-3 text-center border-2 border-cyan-200 shadow-sm flex flex-col items-center justify-center">
+                <span class="text-xs text-cyan-800 font-bold uppercase tracking-wider">Intentos</span>
+                <span id="moves-count" class="text-xl sm:text-2xl font-extrabold text-amber-500">0</span>
+            </div>
+            <!-- Timer Counter -->
+            <div class="bg-white/80 rounded-2xl p-2 sm:p-3 text-center border-2 border-cyan-200 shadow-sm flex flex-col items-center justify-center">
+                <span class="text-xs text-cyan-800 font-bold uppercase tracking-wider">Tiempo</span>
+                <span id="timer" class="text-xl sm:text-2xl font-extrabold text-indigo-600">00:00</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Board Grid -->
+    <main class="max-w-4xl mx-auto w-full flex-grow flex items-center justify-center my-2">
+        <div id="game-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 w-full max-w-3xl">
+            <!-- Cards will be dynamically generated by JavaScript here -->
+        </div>
+    </main>
+
+    <!-- Footer Controls -->
+    <footer class="max-w-2xl mx-auto w-full mt-4 mb-2 flex flex-wrap items-center justify-center gap-3">
+        <!-- Restart Button -->
+        <button id="btn-restart" class="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 active:scale-95 text-white font-extrabold px-5 py-3 rounded-2xl shadow-md transition-all flex items-center gap-2 border-b-4 border-orange-700">
+            <i class="fa-solid fa-rotate-right text-lg"></i>
+            <span>Reiniciar</span>
+        </button>
+
+        <!-- Copy Link Button (Teacher feature) -->
+        <button id="btn-share" class="bg-gradient-to-r from-emerald-400 to-teal-600 hover:from-emerald-500 hover:to-teal-700 active:scale-95 text-white font-extrabold px-5 py-3 rounded-2xl shadow-md transition-all flex items-center gap-2 border-b-4 border-teal-800">
+            <i class="fa-solid fa-share-nodes text-lg"></i>
+            <span>Copiar Enlace</span>
+        </button>
+
+        <!-- Mute Sound Toggle -->
+        <button id="btn-sound" class="bg-white text-cyan-700 hover:bg-cyan-50 active:scale-95 font-bold p-3 rounded-2xl shadow-md border-2 border-cyan-200 transition-all flex items-center justify-center w-12 h-12">
+            <i id="sound-icon" class="fa-solid fa-volume-high text-lg"></i>
+        </button>
+    </footer>
+
+    <!-- Toast Notification for Actions (e.g., Link copied) -->
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white font-bold px-6 py-3 rounded-full shadow-2xl transition-all duration-300 opacity-0 pointer-events-none translate-y-[-20px] flex items-center gap-3 z-50">
+        <i id="toast-icon" class="fa-solid fa-check text-green-400 text-lg"></i>
+        <span id="toast-message">¡Enlace copiado al portapapeles!</span>
+    </div>
+
+    <!-- Victory Modal Overlay -->
+    <div id="victory-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-500">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl border-4 border-cyan-300 transform scale-90 transition-all duration-300 relative overflow-hidden" id="modal-content">
+            <!-- Decorative background elements -->
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-200 rounded-full opacity-50 blur-xl"></div>
+            <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-200 rounded-full opacity-50 blur-xl"></div>
+
+            <div class="relative z-10">
+                <!-- Trophy Icon -->
+                <div class="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-gradient-to-tr from-yellow-300 to-amber-400 rounded-full flex items-center justify-center shadow-lg mb-4 border-4 border-white animate-bounce">
+                    <i class="fa-solid fa-trophy text-white text-4xl sm:text-5xl"></i>
+                </div>
+
+                <h2 class="text-3xl font-extrabold text-slate-800 mb-1">¡Excelente Trabajo!</h2>
+                <p class="text-cyan-700 font-bold mb-6">Completaste el memorama de la vocal I</p>
+
+                <!-- Final Stats -->
+                <div class="bg-cyan-50 rounded-2xl p-4 mb-6 border-2 border-cyan-200 grid grid-cols-2 gap-3">
+                    <div>
+                        <span class="text-xs font-bold text-slate-500 uppercase block">Intentos</span>
+                        <span id="final-moves" class="text-2xl font-extrabold text-amber-500">0</span>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-500 uppercase block">Tiempo</span>
+                        <span id="final-time" class="text-2xl font-extrabold text-indigo-600">00:00</span>
+                    </div>
+                </div>
+
+                <!-- Star Rating -->
+                <div id="star-rating" class="flex justify-center gap-2 mb-6 text-3xl text-amber-400">
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                </div>
+
+                <!-- Action Buttons in Modal -->
+                <div class="flex flex-col gap-3">
+                    <button id="btn-modal-restart" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 active:scale-95 text-white font-extrabold py-3 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 text-lg">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Jugar de Nuevo</span>
+                    </button>
+                    <button id="btn-modal-share" class="w-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold py-2.5 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm border border-slate-300">
+                        <i class="fa-solid fa-share-nodes"></i>
+                        <span>Compartir con Alumnos</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic Section -->
+    <script>
+        // Data structure containing the 5 items starting with letter I
+        const VOCAL_I_ITEMS = [
+            {
+                id: 'iguana',
+                name: 'IGUANA',
+                // Custom detailed SVG illustration for Iguana
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full">
+                    <path d="M15,65 Q25,80 40,75 Q60,82 80,70 Q90,60 85,45 Q75,30 55,35 Q35,25 20,40 Q10,50 15,65 Z" fill="#66bb6a"/>
+                    <!-- Spikes -->
+                    <path d="M25,35 L28,25 L32,34 L37,23 L42,33 L48,22 L53,33 L59,24 L64,35" stroke="#388e3c" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    <!-- Tail -->
+                    <path d="M78,65 Q92,70 95,55 Q98,40 85,38" fill="none" stroke="#66bb6a" stroke-width="7" stroke-linecap="round"/>
+                    <!-- Belly -->
+                    <path d="M25,58 Q45,72 70,62" fill="none" stroke="#a5d6a7" stroke-width="8" stroke-linecap="round"/>
+                    <!-- Eye -->
+                    <circle cx="28" cy="42" r="5" fill="#ffffff"/>
+                    <circle cx="27" cy="42" r="2.5" fill="#1b5e20"/>
+                    <circle cx="28.5" cy="40.5" r="1" fill="#ffffff"/>
+                    <!-- Smile & Nostril -->
+                    <path d="M20,48 Q25,53 30,50" fill="none" stroke="#2e7d32" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="21" cy="43" r="1" fill="#2e7d32"/>
+                    <!-- Legs -->
+                    <path d="M30,68 Q25,80 18,78" fill="none" stroke="#4caf50" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M60,67 Q62,80 72,78" fill="none" stroke="#4caf50" stroke-width="5" stroke-linecap="round"/>
+                </svg>`
+            },
+            {
+                id: 'iglu',
+                name: 'IGLÚ',
+                // Custom detailed SVG illustration for Igloo
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full">
+                    <!-- Snow base -->
+                    <ellipse cx="50" cy="78" rx="42" ry="12" fill="#e0f7fa"/>
+                    <!-- Main Igloo Dome -->
+                    <path d="M15,75 A35,35 0 0,1 85,75 Z" fill="#e1f5fe" stroke="#b3e5fc" stroke-width="3"/>
+                    <!-- Tunnel Entrance -->
+                    <path d="M38,75 A12,12 0 0,1 62,75 Z" fill="#81d4fa" stroke="#29b6f6" stroke-width="2"/>
+                    <path d="M43,75 A7,7 0 0,1 57,75 Z" fill="#0288d1"/>
+                    <!-- Ice Block Grid Lines -->
+                    <path d="M20,60 Q50,53 80,60" fill="none" stroke="#b3e5fc" stroke-width="2"/>
+                    <path d="M28,45 Q50,40 72,45" fill="none" stroke="#b3e5fc" stroke-width="2"/>
+                    <!-- Vertical block lines -->
+                    <line x1="32" y1="60" x2="30" y2="75" stroke="#b3e5fc" stroke-width="2"/>
+                    <line x1="50" y1="56" x2="50" y2="60" stroke="#b3e5fc" stroke-width="2"/>
+                    <line x1="68" y1="60" x2="70" y2="75" stroke="#b3e5fc" stroke-width="2"/>
+                    <line x1="40" y1="42" x2="42" y2="52" stroke="#b3e5fc" stroke-width="2"/>
+                    <line x1="60" y1="42" x2="58" y2="52" stroke="#b3e5fc" stroke-width="2"/>
+                    <!-- Shinning highlight -->
+                    <path d="M25,40 A25,25 0 0,1 45,20" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+                </svg>`
+            },
+            {
+                id: 'iman',
+                name: 'IMÁN',
+                // Custom detailed SVG illustration for Magnet
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full">
+                    <!-- Horseshoe Magnet Body -->
+                    <path d="M20,35 L20,58 A30,30 0 0,0 80,58 L80,35 L62,35 L62,56 A12,12 0 0,1 38,56 L38,35 Z" fill="#e53935" stroke="#c62828" stroke-width="2"/>
+                    <!-- Silver Tips -->
+                    <rect x="20" y="22" width="18" height="15" fill="#e0e0e0" rx="2" stroke="#b0bec5" stroke-width="2"/>
+                    <rect x="62" y="22" width="18" height="15" fill="#e0e0e0" rx="2" stroke="#b0bec5" stroke-width="2"/>
+                    <!-- Magnetic Field Energy Rays -->
+                    <path d="M18,15 Q29,8 40,15" fill="none" stroke="#ffb300" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 3"/>
+                    <path d="M60,15 Q71,8 82,15" fill="none" stroke="#ffb300" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 3"/>
+                    <!-- Sparkles -->
+                    <path d="M29,8 L29,2 M26,5 L32,5" stroke="#ffe082" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M71,8 L71,2 M68,5 L74,5" stroke="#ffe082" stroke-width="2" stroke-linecap="round"/>
+                    <!-- 3D Shadow Highlight -->
+                    <path d="M24,35 L24,58 A26,26 0 0,0 38,72" fill="none" stroke="#ef5350" stroke-width="3"/>
+                </svg>`
+            },
+            {
+                id: 'isla',
+                name: 'ISLA',
+                // Custom detailed SVG illustration for Island
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full">
+                    <!-- Sea water -->
+                    <ellipse cx="50" cy="75" rx="44" ry="14" fill="#4fc3f7"/>
+                    <!-- Water ripples -->
+                    <path d="M12,78 Q20,82 30,78" fill="none" stroke="#0288d1" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M70,80 Q80,83 90,79" fill="none" stroke="#0288d1" stroke-width="2" stroke-linecap="round"/>
+                    <!-- Island Sand Hill -->
+                    <ellipse cx="50" cy="70" rx="36" ry="11" fill="#fff176"/>
+                    <ellipse cx="50" cy="68" rx="34" ry="9" fill="#ffee58"/>
+                    <!-- Palm Tree Trunk -->
+                    <path d="M48,70 Q42,50 52,32 Q55,50 52,70 Z" fill="#8d6e63"/>
+                    <path d="M47,60 Q44,52 50,42" fill="none" stroke="#6d4c41" stroke-width="2"/>
+                    <!-- Coconuts -->
+                    <circle cx="49" cy="34" r="3.5" fill="#4e342e"/>
+                    <circle cx="55" cy="35" r="3.5" fill="#3e2723"/>
+                    <!-- Palm Leaves -->
+                    <path d="M52,32 Q30,22 18,32 Q32,36 52,32 Z" fill="#43a047"/>
+                    <path d="M52,32 Q35,10 28,5 Q42,18 52,32 Z" fill="#66bb6a"/>
+                    <path d="M52,32 Q70,12 82,8 Q70,22 52,32 Z" fill="#43a047"/>
+                    <path d="M52,32 Q75,22 86,34 Q68,38 52,32 Z" fill="#66bb6a"/>
+                    <!-- Little Bush -->
+                    <circle cx="32" cy="68" r="5" fill="#81c784"/>
+                </svg>`
+            },
+            {
+                id: 'impermeable',
+                name: 'IMPERMEABLE',
+                // Custom detailed SVG illustration for Raincoat
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full">
+                    <!-- Raindrops background -->
+                    <path d="M20,15 L20,22 M80,20 L80,27 M15,45 L15,52 M85,55 L85,62" stroke="#29b6f6" stroke-width="2.5" stroke-linecap="round"/>
+                    <!-- Raincoat Body -->
+                    <path d="M30,30 L22,48 L32,50 L32,82 L68,82 L68,50 L78,48 L70,30 Z" fill="#ffca28" stroke="#ffa000" stroke-width="2"/>
+                    <!-- Hood -->
+                    <path d="M32,32 Q50,12 68,32 Q50,22 32,32 Z" fill="#ffd54f" stroke="#ffa000" stroke-width="2"/>
+                    <!-- Collar/Neck -->
+                    <path d="M38,32 L50,42 L62,32" fill="none" stroke="#ff8f00" stroke-width="2"/>
+                    <!-- Center Line & Buttons -->
+                    <line x1="50" y1="38" x2="50" y2="82" stroke="#ffa000" stroke-width="2"/>
+                    <circle cx="45" cy="48" r="2.5" fill="#e65100"/>
+                    <circle cx="45" cy="58" r="2.5" fill="#e65100"/>
+                    <circle cx="45" cy="68" r="2.5" fill="#e65100"/>
+                    <!-- Pockets -->
+                    <rect x="35" y="62" width="10" height="10" rx="2" fill="#ffe082" stroke="#ffa000" stroke-width="1.5"/>
+                    <rect x="55" y="62" width="10" height="10" rx="2" fill="#ffe082" stroke="#ffa000" stroke-width="1.5"/>
+                </svg>`
+            }
+        ];
+
+        // Audio Synthesizer Class using Web Audio API (No external sound files required)
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playFlip() {
+                if (this.muted) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playMatch() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.3);
+                });
+            }
+
+            playMismatch() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.linearRampToValueAtTime(140, now + 0.25);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+
+            playVictory() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const melody = [
+                    { f: 523.25, d: 0.15 },
+                    { f: 659.25, d: 0.15 },
+                    { f: 783.99, d: 0.15 },
+                    { f: 1046.50, d: 0.4 }
+                ];
+                let time = now;
+                melody.forEach(note => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(note.f, time);
+                    gain.gain.setValueAtTime(0.25, time);
+                    gain.gain.exponentialRampToValueAtTime(0.001, time + note.d);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(time);
+                    osc.stop(time + note.d);
+                    time += note.d;
+                });
+            }
+        }
+
+        const soundFX = new SoundEffects();
+
+        // Web Speech API for Spanish voice pronunciation
+        function speakWord(word) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Cancel any ongoing speech
+                const utterance = new SpeechSynthesisUtterance(word);
+                utterance.lang = 'es-ES'; // Spanish
+                utterance.rate = 0.85; // Slightly slower speed for young learners
+                utterance.pitch = 1.1; // Cheerful friendly pitch
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Game State Variables
+        let cardsArray = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let lockBoard = false;
+        let timerInterval = null;
+        let secondsElapsed = 0;
+        let gameStarted = false;
+
+        // DOM Element References
+        const gameGrid = document.getElementById('game-grid');
+        const pairsCountEl = document.getElementById('pairs-count');
+        const movesCountEl = document.getElementById('moves-count');
+        const timerEl = document.getElementById('timer');
+        const btnRestart = document.getElementById('btn-restart');
+        const btnShare = document.getElementById('btn-share');
+        const btnSound = document.getElementById('btn-sound');
+        const soundIcon = document.getElementById('sound-icon');
+        const victoryModal = document.getElementById('victory-modal');
+        const modalContent = document.getElementById('modal-content');
+        const finalMovesEl = document.getElementById('final-moves');
+        const finalTimeEl = document.getElementById('final-time');
+        const btnModalRestart = document.getElementById('btn-modal-restart');
+        const btnModalShare = document.getElementById('btn-modal-share');
+
+        // Fisher-Yates Shuffle Algorithm
+        function shuffle(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // Initialize / Reset Game State
+        function initGame() {
+            // Stop existing timer
+            clearInterval(timerInterval);
+            secondsElapsed = 0;
+            gameStarted = false;
+            timerEl.textContent = '00:00';
+
+            // Reset stats
+            matchedPairs = 0;
+            moves = 0;
+            flippedCards = [];
+            lockBoard = false;
+            pairsCountEl.textContent = '0 / 5';
+            movesCountEl.textContent = '0';
+
+            // Hide modal if open
+            victoryModal.classList.add('opacity-0', 'pointer-events-none');
+            modalContent.classList.add('scale-90');
+
+            // Duplicate 5 items to make 10 cards (5 pairs)
+            const deck = [...VOCAL_I_ITEMS, ...VOCAL_I_ITEMS];
+            cardsArray = shuffle(deck);
+
+            // Render game board cards
+            renderBoard();
+        }
+
+        // Render Cards into HTML Grid
+        function renderBoard() {
+            gameGrid.innerHTML = '';
+            cardsArray.forEach((item, index) => {
+                const cardContainer = document.createElement('div');
+                cardContainer.className = 'card-container card-perspective h-32 sm:h-40 md:h-44 cursor-pointer';
+                cardContainer.dataset.index = index;
+                cardContainer.dataset.id = item.id;
+                cardContainer.dataset.name = item.name;
+
+                cardContainer.innerHTML = `
+                    <div class="card-inner">
+                        <!-- Card Front (Pattern/Cover) -->
+                        <div class="card-front flex flex-col items-center justify-center p-2 text-white">
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/50">
+                                <span class="text-2xl sm:text-3xl font-extrabold text-white">i</span>
+                            </div>
+                            <div class="flex gap-1 mt-2 opacity-60">
+                                <i class="fa-solid fa-star text-xs"></i>
+                                <i class="fa-solid fa-star text-xs"></i>
+                                <i class="fa-solid fa-star text-xs"></i>
+                            </div>
+                        </div>
+
+                        <!-- Card Back (Illustration + Word) -->
+                        <div class="card-back flex flex-col items-center justify-between p-2 sm:p-3 text-slate-800">
+                            <div class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 flex items-center justify-center">
+                                ${item.svg}
+                            </div>
+                            <span class="font-extrabold text-xs sm:text-sm tracking-wide text-cyan-800 bg-cyan-100 px-2 py-0.5 rounded-full border border-cyan-200">
+                                ${item.name}
+                            </span>
+                        </div>
+                    </div>
+                `;
+
+                cardContainer.addEventListener('click', () => handleCardClick(cardContainer));
+                gameGrid.appendChild(cardContainer);
+            });
+        }
+
+        // Timer Handler
+        function startTimer() {
+            if (gameStarted) return;
+            gameStarted = true;
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+                const secs = (secondsElapsed % 60).toString().padStart(2, '0');
+                timerEl.textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        // Card Click Handler
+        function handleCardClick(card) {
+            if (lockBoard) return;
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            // Start timer on first card click
+            startTimer();
+
+            // Sound effect & visual flip
+            soundFX.playFlip();
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                movesCountEl.textContent = moves;
+                checkMatch();
+            }
+        }
+
+        // Check if two flipped cards match
+        function checkMatch() {
+            lockBoard = true;
+            const [card1, card2] = flippedCards;
+            const isMatch = card1.dataset.id === card2.dataset.id;
+
+            if (isMatch) {
+                // Match Found!
+                setTimeout(() => {
+                    soundFX.playMatch();
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+
+                    // Pronounce Spanish word aloud
+                    speakWord(card1.dataset.name);
+
+                    matchedPairs++;
+                    pairsCountEl.textContent = `${matchedPairs} / 5`;
+
+                    flippedCards = [];
+                    lockBoard = false;
+
+                    // Check for Game Victory
+                    if (matchedPairs === 5) {
+                        handleVictory();
+                    }
+                }, 400);
+            } else {
+                // Mismatch
+                setTimeout(() => {
+                    soundFX.playMismatch();
+                }, 400);
+
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    flippedCards = [];
+                    lockBoard = false;
+                }, 1200);
+            }
+        }
+
+        // Handle Victory Modal & Celebrations
+        function handleVictory() {
+            clearInterval(timerInterval);
+            soundFX.playVictory();
+
+            // Trigger victory confetti burst
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            // Populate Modal
+            finalMovesEl.textContent = moves;
+            finalTimeEl.textContent = timerEl.textContent;
+
+            // Display Modal with animation
+            setTimeout(() => {
+                victoryModal.classList.remove('opacity-0', 'pointer-events-none');
+                modalContent.classList.remove('scale-90');
+                modalContent.classList.add('scale-100');
+            }, 600);
+        }
+
+        // Toast Notification System
+        function showToast(message, iconClass = 'fa-check') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMessage.textContent = message;
+            toastIcon.className = `fa-solid ${iconClass} text-green-400 text-lg`;
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+            }, 2500);
+        }
+
+        // Copy Share Link Feature
+        function copyShareLink() {
+            const currentUrl = window.location.href;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(currentUrl).then(() => {
+                    showToast('¡Enlace copiado! Listo para compartir con tus alumnos.');
+                }).catch(() => {
+                    fallbackCopyTextToClipboard(currentUrl);
+                });
+            } else {
+                fallbackCopyTextToClipboard(currentUrl);
+            }
+        }
+
+        // Fallback for document copy
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast('¡Enlace copiado! Listo para compartir.');
+            } catch (err) {
+                showToast('No se pudo copiar automáticamente', 'fa-triangle-exclamation');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Sound Mute Toggle
+        btnSound.addEventListener('click', () => {
+            soundFX.muted = !soundFX.muted;
+            if (soundFX.muted) {
+                soundIcon.className = 'fa-solid fa-volume-xmark text-lg text-red-500';
+            } else {
+                soundIcon.className = 'fa-solid fa-volume-high text-lg text-cyan-700';
+            }
+        });
+
+        // Event Listeners for Game Controls
+        btnRestart.addEventListener('click', () => {
+            soundFX.init();
+            initGame();
+        });
+
+        btnModalRestart.addEventListener('click', () => {
+            soundFX.init();
+            initGame();
+        });
+
+        btnShare.addEventListener('click', copyShareLink);
+        btnModalShare.addEventListener('click', copyShareLink);
+
+        // Start game on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initGame();
+        });
+    </script>
+</body>
+</html>
